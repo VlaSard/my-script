@@ -1,0 +1,20 @@
+#! /usr/bin/env sh
+
+# -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+# Cache Cleaning
+# author: VlaSard
+# github: https://github.com/VlaSard
+# date: 2021.04.15
+# cache-cleaning
+#
+# DESCRIPTION:
+# Cleaning the cache after updates
+#
+# USAGE:
+# cache-cleaning
+#
+# -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+# -=-=-=-=-=-=-=-= MAIN  =-=-=-=-=-=-=-=-
+paccache -r
+sudo pacman -Sc
