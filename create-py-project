@@ -1,0 +1,160 @@
+#! /usr/bin/env bash
+
+# -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+# Project Creator
+# author: VlaSard
+# github: https://github.com/VlaSard
+# date: 2022.08.28
+# create-py-project
+#
+# DESCRIPTION:
+# Создает структуру проекта общего назначения.
+# Настраивает директории, создает и заполняет некоторые файлы проекта.
+# Устанавливает и активирует виртуальное пространство в директории проекта.
+# Активирует VCS и делает первичный commit.
+#
+# USAGE:
+# create-py-project [project_directory_name]
+#
+# В качестве имени проекта используется project_directory_name.
+#
+# -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+# -=-=-=-=-=-=-= VARIABLES =-=-=-=-=-=-=-
+CmdLine="${1}"
+PrgName="${0##*/}"
+DirName="${CmdLine}"
+ProjectName="${1##*/}"
+#ProjectName=${ProjectName//_/ }
+Date=$(date +%Y)
+
+# -=-=-=-=-=-= MESSAGES =-=-=-=-=-=-=-
+msg_NoCmdLine=(
+    "${PrgName}: пропущен операнд. Необходимо указать имя проекта."
+    "Вызов: «${PrgName} [project_name]»"
+)
+msg_HelpCmdLine=(
+    "${PrgName} - создает проект с именем переданным в качастве параметра запуска скрипта."
+    "В диретории проекта создаются поддиректрии, файл описания проекта и другие файлы и директории."
+    "Создается виртуальное окружения для проекта. Активируется система контроля версий git."
+)
+msg_DirExists=(
+    "Проект ${ProjectName} уже существует!"
+    "Запустите скрипт ${PrgName} с другим именем проекта."
+)
+
+# -=-=-=-=-=-=-= FUNCTIONS =-=-=-=-=-=-=-
+# вывод сообщений
+PrintMsg() {
+    printf '%b\n' "${@}"
+    exit
+}
+
+# -=-=-=-=-=-=-=-= MAIN =-=-=-=-=-=-=-=-
+# -=-=-=-= COMMAND LINE PARSING =-=-=-=-
+# проверка наличия параметров к командной строке
+[ -z "${CmdLine}" ] &&
+    PrintMsg "${msg_NoCmdLine[@]}" &&
+    exit 1
+
+# проверка опций командной строки
+[ "${CmdLine}" = "-h" ] || [ "${CmdLine}" = "--help" ] &&
+    PrintMsg "${msg_HelpCmdLine[@]}" &&
+    exit
+
+# -=-= SETTING UP A VIRTUAL ENVIRONMENT =-=-
+# создать главную директорию проекта
+[ -d "${DirName}" ] &&
+    PrintMsg "${msg_DirExists[@]}" &&
+    exit 1
+
+mkdir "${DirName}"
+
+cd "${DirName}" || exit 1
+
+# устанавливаем venv
+pip3 install -U virtualenv
+python3 -m virtualenv venv
+
+# активируем venv
+# shellcheck source=/dev/null
+source venv/bin/activate
+
+# установка pytest
+pip install pytest
+
+echo
+echo "Виртуальная среда VENV установлена и активирована."
+echo "pytest установлен."
+echo
+
+#cd - || exit 1
+
+# -=-=-=-=-=-= PROJECT SETUP =-=-=-=-=-=-
+# создать файл описания поекта
+{
+    echo "# ${ProjectName}"
+    echo
+    echo "Здесь нужно добавить описание проекта, привести примеры использования проекта."
+    echo
+} >>"${DirName}"/README.md
+
+# создать структуру проекта
+mkdir "${DirName}"/tests
+mkdir "${DirName}"/src
+
+# добавить файлы проекта
+{
+    echo '"""'
+    echo 'Avoid test file name collision.'
+    echo
+    echo '__init__.py files in test directories allow test files in multiple'
+    echo 'directories to have the same name in the same session.'
+    echo
+    echo '"""'
+    echo
+} >>"${DirName}"/tests/__init__.py
+
+touch "${DirName}"/tests/pytest.ini
+
+{
+    echo '"""Placeholder."""'
+    echo
+    echo '# nothing here yet'
+    echo
+} >>"${DirName}"/tests/conftest.py
+
+{
+    echo '"""Setup file for project."""'
+    echo
+} >>"${DirName}"/setup.py
+
+{
+    echo "Copyright (c) ${Date}"
+    echo
+    echo 'All rights reserved.'
+    echo
+} >>"${DirName}"/LICENSE
+
+# -=-=-=-=-=-=-= VCS SETTING =-=-=-=-=-=-=-
+#cd "${DirName}" || exit 1
+
+# инициализируем пустой репозиторий Git
+git init
+
+# создаем и заполняем .gitignore
+{
+    echo "venv"
+    echo "/.gitignore"
+} >>.gitignore
+
+# выполняем первоначальный commit
+git add src
+git add .
+git commit -m "init ${ProjectName}"
+
+# -=-=-= PROJECT SUCCESSFULLY CREATED =-=-=-
+echo "Проект ${ProjectName} успешно создан и настроен."
+echo
+
+cd - || exit 1

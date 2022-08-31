@@ -1,0 +1,79 @@
+#! /usr/bin/env bash
+
+# -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+# Create template bash file
+# author: VlaSard
+# github: https://github.com/VlaSard
+# create-bash
+#
+# DESCRIPTION:
+# Creates an empty bash script file and sets the executable flag
+#
+# USAGE:
+# create-bash [script_filename]
+#
+# -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+# -=-=-=-=-=-=-= VARIABLES =-=-=-=-=-=-=-
+DateProject=$(date +%Y.%m.%d)
+ScriptName=${1}
+
+# -=-=-=-=-=-=-= MESSAGES =-=-=-=-=-=-=-=-
+msg_NoFileName="The file name is not specified!"
+msg_FileScript="A script with the specified name already exists!\nSpecify another name for the script."
+
+# -=-=-=-=-=-=-= FUNCTIONS =-=-=-=-=-=-=-
+write_script_file() {
+    cat <<-_EOF_
+#! /usr/bin/env sh
+
+# -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+# PROJECT_NAME
+# author: ${USER}
+# github: URL_GIT
+# date: ${DateProject}
+# ${ScriptName}
+#
+# DESCRIPTION:
+#
+# REVIEWS:
+#
+# USAGE:
+# ${ScriptName} [OPTIONS]
+#
+# -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+
+# -=-=-=-=-=- SCRIPT SETTINGS -=-=-=-=-=-
+
+
+# -=-=-=-=-=-=-= VARIABLES =-=-=-=-=-=-=-
+
+
+# -=-=-=-=-=-=-= MESSAGES =-=-=-=-=-=-=-=-
+
+
+# -=-=-=-=-=-=-= FUNCTIONS =-=-=-=-=-=-=-
+
+
+# -=-=-=-=-=-=-=-= MAIN  =-=-=-=-=-=-=-=-
+
+_EOF_
+}
+
+# -=-=-=-=-=-=-=-= MAIN  =-=-=-=-=-=-=-=-
+# проверка командной строки
+[ "$1" ] ||
+    echo "${msg_NoFileName}" ||
+    exit 1
+
+# создаем файл скрипта, если не существует
+if [ -f "${1}" ]; then
+    echo -e "${msg_FileScript}"
+    exit 1
+else
+    write_script_file >"${ScriptName}"
+fi
+
+# устанавливаем флаг исполняемый
+chmod +x "$1"
