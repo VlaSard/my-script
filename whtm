@@ -1,0 +1,52 @@
+#! /usr/bin/env bash
+
+# -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+# Create a local mirror of the website
+# author: VlaSard
+# github: https://github.com/VlaSard
+# date:
+# whtm
+#
+# ОПИСАНИЕ:
+#   Обертка для создания зеркала сайта.
+#   По умолчанию зеркало создается в директории ~/html
+#
+# ВЫЗОВ:
+#   whtm [глубина вложения] [адрес сайта]
+#
+# -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+ScriptName=${0##*/}      # имя скрипта
+FolderSite="$HOME/html/" # папка для загрузки по умолчанию
+Lang=${LANG:0:2}         # язык сообщений скрипта
+
+load_msg_en() {
+    msg=("${ScriptName} no startup parameters are specified"
+        ""
+        "Usage: ${ScriptName} 1 url"
+        "\t1 - attachment depth" "\turl - download site address"
+        ""
+        "If the embedding depth is not specified, the default value will be used. The download will be made to the default directory: ${FolderSite}.")
+}
+load_msg_ru() {
+    msg=("${ScriptName} не указаны параметры запуска"
+        ""
+        "Использование: ${ScriptName} 1 url"
+        "\t1 - глубина вложения" "\turl - адрес сайта для скачивания"
+        ""
+        "Если глубина вложения не задана, будет использоваться величина по умолчанию. Загрузка будет выполнена в папку по умолчанию: ${FolderSite}.")
+}
+
+# загрузка сообщений на основе языка локали
+"load_msg_${Lang}" || load_msg_en
+
+# проверка параметров командной строки, если не указаны параметры выводим сообщение
+[ -z "${*}" ] && printf '%b\n' "${msg[@]}" && exit 1
+
+if [ "$#" -eq 1 ]; then
+    wget -r -k -p -E -nc "${1}" -P "${FolderSite}" # если указан только один параметр
+else
+    wget -r -k -l "${1}" -p -E -nc "${2}" -P "${FolderSite}" # если указаны два параметра
+fi
+
+exit 0
