@@ -1,0 +1,89 @@
+#! /usr/bin/env bash
+
+# -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+# PDF Mark
+# author: VlaSard
+# github: https://github.com/VlaSard
+# pdfmark
+#
+# DESCRIPTION:
+# pdfmark: объединяет несколько pdf документов и добавляет закладки, с именами файлов,
+#          в итоговый pdf документ.
+#
+# REVIEWS:
+#       pdftk
+#       zenity
+#       notify-send
+#
+# USAGE:
+# pdfmark [script_filename]
+#
+# -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+# -=-=-=-=-=-=-= VARIABLES =-=-=-=-=-=-=-
+PrgName="${0##*/}"
+WorkDir="${PWD##*/}"
+FileList=("${@##*/}")
+MarkList=("${FileList[@]/.pdf/}")
+
+# -=-=-=-=-=-=-= MESSAGES =-=-=-=-=-=-=-=-
+msg_title="Объединение документов..."
+msg_err="Невозможно объединить только один файл.\nПожалуйста, выберите не менее двух файлов."
+msg_progress="Выполняется объединение всех файлов.\nИ добавление содержания в итоговый pdf документ."
+msg_finish="Операция успешно завершена."
+msg_finisherr="Операция завершилась неудачей."
+msg_help="Использование: ${PrgName} [ -h | --help | список файлов]\nОбъединяет pdf документы и добавляет закладки в итоговый файл.\n\n[список файлов]\tpdf документы для объединения\n-h | --help\tпоказать эту справку и выйти."
+
+# -=-=-=-=-=-=-= FUNCTIONS =-=-=-=-=-=-=-
+
+# -=-=-=-=-=-=-=-= MAIN  =-=-=-=-=-=-=-=-
+# проверка командной строки
+[ "${1}" = "-h" ] || [ "${1}" = "--help" ] || [ ${#} -lt 1 ] && printf '%b\n' "${msg_help}" && exit 1
+
+# если выбран один файл - ошибка
+[ ${#} -lt 2 ] && zenity --title="${msg_title}" --warning --text="${msg_err}" --no-wrap && exit 1
+
+# создать временную директорию
+matrix="0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+
+while [ "${n:=1}" -le 16 ]; do
+    DirName="$DirName${matrix:$((RANDOM % ${#matrix})):1}"
+    ((n += 1))
+done
+
+TmpDir="/tmp/${DirName}"
+
+[ -d "${TmpDir}" ] || mkdir "${TmpDir}"
+
+# создать файл закладок
+{
+    NumberPage=1
+    echo "InfoBegin"
+    echo "InfoKey: Title"
+    echo "InfoValue: ${WorkDir}"
+    echo "InfoBegin"
+    echo "InfoKey: Author"
+    echo "InfoValue: ${USER^}"
+    echo "NumberOfPages: ${#FileList[@]}"
+    for BookMark in "${MarkList[@]}"; do
+        echo "BookmarkBegin"
+        echo "BookmarkTitle: ${BookMark}"
+        echo "BookmarkLevel: 1"
+        echo "BookmarkPageNumber: ${NumberPage}"
+        ((NumberPage += 1))
+    done
+} >>"${TmpDir}"/file.info
+
+# объединить выбранные документы и добавить закладки
+(pdftk "${@}" cat output "${TmpDir}"/"${WorkDir}".pdf && pdftk "${TmpDir}"/"${WorkDir}".pdf update_info "${TmpDir}"/file.info output "${WorkDir}.pdf") | zenity --progress --title="${msg_title}" --text="${msg_progress}" --pulsate --width=500 --no-cancel --auto-close --auto-kill
+
+# проверяем наличие созданого файла и выводим сообщение об окончании работы скрипта
+if [ -f "${WorkDir}.pdf" ]; then
+    notify-send -t 5000 -i emblem-success -a "${msg_title}" " " "${msg_finish}"
+else
+    notify-send -t 5000 -i emblem-important -a "${msg_title}" " " "${msg_finisherr}"
+fi
+
+# почистить мусор и выйти
+[ -d "${TmpDir}" ] && rm -r "${TmpDir}"
+exit
