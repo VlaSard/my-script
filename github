@@ -1,0 +1,114 @@
+#! /usr/bin/env bash
+
+# -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+# Удаленная работа с GitHub
+# author: VlaSard
+# github: https://github.com/VlaSard
+# date: 2022.08.30
+# github
+#
+# DESCRIPTION:
+#   Creates an external repository on github and push local repository.
+#
+# REVIEWS:
+#
+# USAGE:
+#   github [actions]
+#           repo    создание удаленного репозитория и настройка локального
+#           push    выгрузка из локального в удаленный репозиторий
+#
+# -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+# -=-=-=-=-=-=-= VARIABLES =-=-=-=-=-=-=-
+ACTIONS="${1}"
+CurrentDir=${PWD##*/}
+TokenFile=PATH/TO/TOKEN/FILE
+UserFile=PATH/TO/USER/GIT/FILE
+DescFile=RepoDesc
+FontNormal="\033[0m"
+FontRed="\033[31m"
+
+# -=-=-=-=-=-=-= MESSAGES =-=-=-=-=-=-=-=-
+msg_NoParams="No parameters specified!"
+msg_RepoName="New repo name (enter for ${PWD##*/}): "
+msg_GitUserName="Git Username (enter for github): "
+msg_RepoDescription="Repo Description: "
+msg_TokenGit="Personal access token: "
+msg_NoTokenGit="No token specified or no token file! Enter access token."
+
+# -=-=-=-=-=-=-= FUNCTIONS =-=-=-=-=-=-=-
+# создать удаленный и локальный репозитории
+repo() {
+    # упаковываем параметры git.api
+    GitRepoParams="{\"name\":\"${GitRepoName}\", \"description\":\"${RepoDescription}\", \"private\":false, \"has_issues\":true, \"has_downloads\":true, \"has_wiki\":false}"
+
+    # создаем внешний репозиторий
+    curl -u "${GitUserName}":"${TokenGit}" https://api.github.com/user/repos -d "${GitRepoParams}"
+
+    # проеверяем доступность локального репозитория
+    # если не существует то создаем
+    [ -d .git ] || git init
+
+    # добавляем ссылку на внешний репозиторий
+    git remote add origin https://github.com/"${GitUserName}"/"${GitRepoName}".git
+}
+
+# выгрузить изменения из локального в удаленный репозиторий
+push() {
+    git push https://"${GitUserName}":"${TokenGit}"@github.com/"${GitUserName}"/"${GitRepoName}".git master
+}
+
+# -=-=-=-=-=-=-=-= MAIN  =-=-=-=-=-=-=-=-
+# проверка наличия параметров запуска, если нет выходим с ошибкой 1
+if [ -z "${*}" ]; then
+    echo "${msg_NoParams}"
+    exit 1
+fi
+
+# получаем данные для работы с github
+# имя репозитория, по умолчанию имя директории проекта
+read -r -p "${msg_RepoName}" GitRepoName
+GitRepoName=${GitRepoName:-${CurrentDir}}
+
+# имя пользователя
+read -r -p "${msg_GitUserName}" GitUserName
+if [ -z "${GitUserName}" ]; then
+
+    if [ -f "${UserFile}" ]; then
+        GitUserName=$(cat "${UserFile}")
+    else
+        GitUserName=${GitUserName:-${USER}}
+    fi
+
+fi
+
+# описание репозитория, если есть файл описания прочитает из файла
+# или передаст пустое
+read -r -p "${msg_RepoDescription}" RepoDescription
+if [ -z "${RepoDescription}" ]; then
+
+    if [ -f RepoDesc ]; then
+        RepoDescription=${RepoDescription:-$(cat "${DescFile}")}
+    else
+        RepoDescription=""
+    fi
+
+fi
+
+# ключ доступа, если не указан попытается прочитать из файла
+while [ -z "${TokenGit}" ]; do
+    read -r -p "${msg_TokenGit}" TokenGit
+
+    if [ -z "${TokenGit}" ]; then
+
+        if [ -f "${TokenFile}" ]; then
+            TokenGit=${TokenGit:-$(cat "${TokenFile}")}
+        else
+            echo -e "${FontRed}${msg_NoTokenGit}${FontNormal}"
+        fi
+
+    fi
+done
+
+# запускаем выполнение команд
+"${ACTIONS}"
