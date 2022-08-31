@@ -1,0 +1,151 @@
+#! /usr/bin/env bash
+
+# -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+# Photo Menu
+# author: VlaSard
+# github: https://github.com/VlaSard
+# date: 2021.06.21
+# photo_menu
+#
+# DESCRIPTION:
+# photo_menu - оболочка для изменения качества и размера фотографий,
+#              перименовывания с датой съемки
+#
+# REVIEWS:
+#       convert
+#       exiv2
+#       zenity
+#       notify-send
+#
+# USAGE:
+# photo_menu [OPTIONS]
+#
+# -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+# -=-=-=-=-=-=-= VARIABLES =-=-=-=-=-=-=-
+# CmdLine="${*}"
+ScriptName="${0##*/}"
+action="${1}"
+shift
+WorkDir="${1%/*}"
+[ ! -d "${WorkDir}" ] && WorkDir="./"
+FileList=("${@##*/}")
+PrgName="${ScriptName%.[^.]*}"
+
+# -=-=-=-=-=-=-= MESSAGES =-=-=-=-=-=-=-=-
+msg_script_info=(
+    "${PrgName}: не заданы параметры."
+    "Использование ${PrgName} [action] [files]"
+    "[action]\tquality - изменение качества фотографии"
+    "\t\tresize\t- изменение размера фотографии"
+    "\t\trename\t- переименовать с датой съемки"
+    "[files]\t\tодин или несколько файлов")
+
+msg_title="Обработка фотографий"
+
+msg_quality_info="Выберите качество фотографии от 50 до 100."
+msg_quality_progress="Выполняется изменение качества фотографий."
+msg_quality_finish="Операция успешно завершена."
+msg_quality_err="Операция отменена."
+
+msg_resize_info="Выберите на сколько уменьшить размер фотографий от 30% до 100%."
+msg_resize_progress="Выполняется изменение размера фотографий."
+msg_resize_finish="Изменение размера фотографий успешшно завершенно."
+msg_resize_err="Операция изменения размера фотографий отменена."
+
+msg_rename_progress="Выполняется переименовывание фотографий."
+msg_rename_finish="Операция успешно завершена."
+
+msg_notify_title="Dolphin"
+
+# -=-=-=-=-=-=-= FUNCTIONS =-=-=-=-=-=-=-
+# выбор качества фотографии
+quality() {
+    action_title="Сжатие фотографий"
+
+    # ImgQuality="$(kdialog --icon image --title "${msg_title}" --slider "${msg_quality_info}" 50 100 10)"
+    ImgQuality="$(zenity --scale --title="${msg_title}" --text="${msg_quality_info}" --step=10 --value=85 --min-value=50 --max-value=100)"
+
+    [ -z "${ImgQuality}" ] &&
+        action_err="${msg_quality_err}" &&
+        return 1
+
+    (
+        for i in "${@}"; do
+            local BaseFileName="${i%.*}"
+            local ExtFileName="${i#*.}"
+            convert -quality "${ImgQuality}" "${i}" "${BaseFileName} (quality_${ImgQuality}).${ExtFileName}"
+        done
+    ) | zenity --progress --title="${msg_title}" --text="${msg_quality_progress}" --pulsate --width=500 --no-cancel --auto-close --auto-kill
+
+    action_finish="${msg_quality_finish}"
+    return
+}
+
+# изменение размера фотографии
+resize() {
+    action_title="Изменение размера"
+
+    # ImgSize="$(kdialog --icon image --title "${msg_title}" --slider "${msg_resize_info}" 30 100 10)"
+    ImgSize="$(zenity --scale --title="${msg_title}" --text="${msg_resize_info}" --step=10 --value=85 --min-value=30 --max-value=100)"
+
+    [ -z "${ImgSize}" ] &&
+        action_err="${msg_resize_err}" &&
+        return 1
+
+    (
+        for i in "${@}"; do
+            local BaseFileName="${i%.*}"
+            local ExtFileName="${i#*.}"
+            # local WidthSize="$(identify -format '%w' "${i}")"
+            # local HeightSize="$(identify -format '%h' "${i}")"
+            # local WSize=$(((WidthSize / 100) * ImgSize))
+            # local HSize=$(((HeightSize / 100) * ImgSize))
+            local OutSize="$((($(identify -format '%w' "${i}") / 100) * ImgSize))x$((($(identify -format '%h' "${i}") / 100) * ImgSize))"
+            convert -resize "${OutSize}" "${i}" "${BaseFileName} (${OutSize}).${ExtFileName}"
+        done
+    ) | zenity --progress --title="${msg_title}" --text="${msg_resize_progress}" --pulsate --width=500 --no-cancel --auto-close --auto-kill
+
+    action_finish="${msg_resize_finish}"
+    return
+}
+
+# переименовать фотографии с датой снимка
+rename() {
+    action_title="Переименование фотографий"
+
+    (
+        for i in "${@}"; do
+            local BaseFileName="${i%.*}" # выделяем имя файла без расширения
+            local ExtFileName="${i#*.}"  # выделяем расширение файла
+            # local FileName="${i^^}"      # перекодировка имени и расширения файла в верхний регистр
+            local FileName="${BaseFileName}.${ExtFileName,,}"
+            mv "${i}" "${FileName}"
+            exiv2 -k rename "${FileName}"
+        done
+    ) | zenity --progress --title="${msg_title}" --text="${msg_rename_progress}" --pulsate --width=500 --no-cancel --auto-close --auto-kill
+
+    action_finish="${msg_rename_finish}"
+    return
+}
+
+# -=-=-=-=-=-=-=-= MAIN  =-=-=-=-=-=-=-=-
+cd "${WorkDir}" || exit 1
+
+# проверка наличия параметров запуска, если нет выходим с ошибкой 1
+[ -z "${*}" ] &&
+    printf '%b\n' "${msg_script_info[@]}" &&
+    exit 1
+
+"${action}" "${FileList[@]}"
+
+# вывод всплывающего сообщение о завершении
+if [ $? -eq 1 ]; then
+    notify-send -t 5000 -i emblem-important -a "${msg_notify_title}" "${action_title}" "${action_err}"
+else
+    notify-send -t 5000 -i emblem-success -a "${msg_notify_title}" "${action_title}" "${action_finish}"
+fi
+
+cd - || exit 1
+
+exit

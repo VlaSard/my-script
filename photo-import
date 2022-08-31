@@ -1,0 +1,131 @@
+#! /usr/bin/env bash
+# shellcheck disable=SC2034,SC2086,SC2196
+
+# -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+# Сортировка фотографий
+# author: VlaSard
+# github: https://github.com/VlaSard
+# date: 2022.08.30
+# photo-import
+#
+# ОПИСАНИЕ:
+#  Импортирует фотографии в фотоальбом и сортирует по директориям [YYYY / MM].
+#  Позволяет изменить рарешение и качество.
+#  Переименовывает фотографии в формат YYYYMMDD_hhmmss.jpg.
+#  НЕ УДАЛЯЕТ оригиналы файлов.
+#  НЕ УВЕЛИЧИВАЕТ разрешение.
+#
+# НАСТРОЙКА СКРИПТА:
+#   - Расположение альбома, величины качества jpg и размера фотографий:
+#       задаются в переменных, в начале скрипта
+#   - Режимы копирования, конвертирования и изменения в датах:
+#       устанавливаются в конце скрипта, снятием (установкой) коментариев (#)
+#
+# ЗАВИСИМОСТИ:
+#   exiv2
+#   convert
+#
+# ИСПОЛЬЗОВАНИЕ:
+#   photo-import [dir_name]
+#   dir_name - необязательный параметр, откуда будем импортировать фотографии
+#
+# -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+# -=-=-=-=-=-=-= VARIABLES =-=-=-=-=-=-=-
+# по умолчанию используем текущий каталог
+WorkDir=${1:-${PWD}}
+# каталог назначения
+PhotoDir="${HOME}/Photo album"
+# качество jpg
+Quality=80
+# итоговый размер фотографии не более
+Resize=1600x900
+
+# -=-=-=-=-=-=-= FUNCTIONS =-=-=-=-=-=-=-
+MsgFileExists() {
+    echo -e "\033[31mФайл ${1} уже существует!\033[0m"
+}
+
+# -=-=-=-=-=-=-=-= MAIN  =-=-=-=-=-=-=-=-
+# перебираем все jpg-файлы в указанной директории и всех поддиректориях
+find "${WorkDir}" -iname "*.jpg" | sort | while read -r FilePhoto; do
+
+    # читаем дату из EXIF
+    for PhotoDate in "Exif.Photo.DateTimeOriginal" "Exif.Image.DateTime"; do
+        PhotoDate=$(exiv2 -g "${PhotoDate}" -Pv "${FilePhoto}")
+
+        # если прочитали дату снимка, прекращаем поиск даты
+        [ -n "${PhotoDate}" ] && break
+    done
+
+    # если не нашли в EXIF ищем в названии файла
+    if [ -z "${PhotoDate}" ]; then
+
+        # ищем дату в названии файла и формируем в виде YYYYMMDDHHMMSS
+        PhotoDate=$(basename "${FilePhoto}" ".jpg" |
+            grep -E -o -m1 "[0-9]\{4\}\([-_:\ ]?[0-9]\)\{10\}")
+
+        if [ -n "${PhotoDate}" ]; then
+            # формируем дату для корректного добавления в EXIF
+            # вида YYYY:MM:DD HH:MM:SS
+            PhotoDate=$(echo "${PhotoDate}" |
+                tr -d "\_\-\:\ " |
+                sed 's/\([0-9]\{4\}\)\([0-9]\{2\}\)\([0-9]\{2\}\)\([0-9]\{2\}\)\([0-9]\{2\}\)/\1:\2:\3 \4:\5:/')
+
+            # добавляем дату из названия файла в EXIF
+            exiv2 -M "add Exif.Image.DateTime Ascii ${PhotoDate}" "${FilePhoto}"
+
+        # если даты в названии не нашли, берем дату создания (изменения) файла
+        else
+            PhotoDate=$(date +"%Y:%m:%d %T" -r "${FilePhoto}")
+
+            # добавляем дату в EXIF
+            # exiv2 -M "add Exif.Image.DateTime Ascii ${PhotoDate}" "${FilePhoto}"
+        fi
+
+    fi
+
+    # из различных вариантов даты формируем в виде YYYY MM DD HH MM SS
+    PhotoDate=$(echo "${PhotoDate}" |
+        egrep -o -m1 [0-9]\{4\}\([-_:\ ]?[0-9]\)\{10\} |
+        tr -d "\_\-\:\ " |
+        sed 's/\([0-9]\{4\}\)\([0-9]\{2\}\)\([0-9]\{2\}\)\([0-9]\{2\}\)\([0-9]\{2\}\)/\1 \2 \3 \4 \5 /')
+
+    # разбираем дату вида (YYYY MM DD HH MM SS) на переменные
+    # $1 - год, $2 - месяц, $3 - день, $4 - часы, $5 - минуты $6 - секунды
+    set -- $PhotoDate
+
+    # создаем структуру фотоальбома (YYYY / MM)
+    mkdir -p "${PhotoDir}/${1}/${2}"
+
+    # формируем новое имя файла вида (YYYYMMDD_HHMMSS.jpg)
+    PhotoFileName="${1}${2}${3}_${4}${5}${6}.jpg"
+
+    # если имена файлов совпадают, добавляем к имени индекс
+    count=0
+    while [ -z "${PhotoFileName}" ]; do
+        md5src=$(md5scr "FilePhoto")
+        md5src=${md5src%*}
+        md5dst=$(md5sum "${PhotoFileName}")
+        md5dst=${md5dst%*}
+        if [ "${md5src}" != "${md5dst}" ]; then
+            PhotoFileName="${PhotoFileName%.*}_${count}.jpg"
+            count=$((count + 1))
+        else
+            MsgFileExists "${PhotoFileName}"
+            break
+        fi
+    done
+
+    # ЗДЕСЬ МОЖНО НАСТРОИТЬ РЕЖИМ КОПИРОВАНИЯ, КОНВЕРТИРОВАНИЯ И ИЗМЕНЕНИЕ ДАТЫ
+
+    # копировать файл если исходный файл новее существующего или отсутствует
+    cp -uvp "${FilePhoto}" "${PhotoDir}/${1}/${2}/${PhotoFileName}"
+
+    # изменить качество и размер фотографии, переименовывать и копировать в альбом
+    # convert -quality "${Quality}" -resize "${Resize}"\> -verbose "${FilePhoto}" "${PhotoDir}/${1}/${2}/${PhotoFileName}"
+
+    # установить дату создания в соответсвии с датой в EXIF
+    touch -t "${1}${2}${3}${4}${5}.${6}" "${PhotoDir}/${1}/${2}/${PhotoFileName}"
+
+done
