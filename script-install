@@ -1,0 +1,40 @@
+#! /usr/bin/env sh
+
+# -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+# Install Scripts
+# author: VlaSard
+# github: https://github.com/VlaSard
+# date: 2022.08.28
+# script-install
+#
+# DESCRIPTION:
+#   Устанавливает пользовательские скрипты.
+#
+# REVIEWS:
+#   install
+#
+# USAGE:
+#   script-install [OPTIONS]
+#
+# -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+# -=-=-=-=-=-=-= VARIABLES =-=-=-=-=-=-=-
+ScriptName=${1}
+
+# -=-=-=-=-=-=-= MESSAGES =-=-=-=-=-=-=-=-
+msg_Start="Install $ScriptName!"
+msg_Finish="$ScriptName is now installed in directory $PathInstall !"
+
+# -=-=-=-=-=-=-= FUNCTIONS =-=-=-=-=-=-=-
+_install() {
+    install -m 755 "$ScriptName" "$PathInstall"
+}
+
+# -=-=-=-=-=-=-=-= MAIN  =-=-=-=-=-=-=-=-
+if [ "$(id -u)" != "0" ]; then
+    PathInstall=$HOME/.local/bin/
+    echo "${msg_Start}"
+    _install "$ScriptName" "$PathInstall"
+    echo "${msg_Finish}"
+    exit 0
+fi
