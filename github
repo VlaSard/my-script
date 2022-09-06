@@ -61,7 +61,7 @@ EOF
 colorset() {
     # DESC: установка цветов для вывода текста
     # ARGS: NO_COLOR, TERM
-    # OUTS: NORMAL, RED, GREEN, YELLOW, BLUE, PURPLE, CYAN
+    # OUTS: NORMAL, RED
 
     if [[ -t 2 ]] && [[ -z "${NO_COLOR:-}" ]] && [[ "${TERM:-}" != "dumb" ]]; then
         NORMAL='\033[0m' RED='\033[0;31m'
@@ -80,8 +80,7 @@ msg() {
 
 die() {
     # DESC: вывод служебных сообщений скрипта и выход с кодом завершения
-    # ARGS: $1 - сообщение,
-    #       $2 - код выхода, по умолчанию 1
+    # ARGS: msg, code
     # OUTS: none
 
     local msg=$1
@@ -139,7 +138,7 @@ initparam() {
     GitRepoName=${GitRepoName:-${CurrentDir##*/}}
 
     # получить имя пользователя
-    read -r -p "Введите имя пользователя github (по умолчанию $USERNAME): " GitUserName
+    read -r -p "Введите имя пользователя github (по умолчанию $([[ -f "$UserFile" ]] && cat "$UserFile" || echo "$USERNAME")): " GitUserName
 
     if [ -z "$GitUserName" ]; then
 
@@ -179,7 +178,7 @@ repo() {
     if [ -z "${RepoDescription[*]}" ]; then
 
         if [ -f RepoDesc ]; then
-            RepoDescription=$RepoDescription:-$(cat "$DescFile")
+            RepoDescription=${RepoDescription:-$(cat "$DescFile")}
         else
             RepoDescription=""
         fi
@@ -196,7 +195,7 @@ repo() {
     [ -d .git ] || git init
 
     # добавляем ссылку на внешний репозиторий
-    git remote add origin https://github.com/"$GitUserName"/"$GitRepoName".git
+    git remote add origin https://github.com/"$GitUserName/$GitRepoName.git"
 }
 
 push() {
@@ -204,7 +203,7 @@ push() {
     # ARGS: GitRepoName, GitUserName, TokenGit
     # OUTS: none
 
-    git push https://"$GitUserName":"$TokenGit"@github.com/"$GitUserName/$GitRepoName".git master
+    git push https://"$GitUserName":"$TokenGit"@github.com/"$GitUserName/$GitRepoName.git" master
 }
 
 ScriptName=$(basename "${BASH_SOURCE[0]}")
