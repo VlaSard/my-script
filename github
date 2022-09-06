@@ -1,114 +1,229 @@
 #! /usr/bin/env bash
+# shellcheck disable=2034
 
-# -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-# Удаленная работа с GitHub
-# author: VlaSard
-# github: https://github.com/VlaSard
-# date: 2022.08.30
-# github
-#
-# DESCRIPTION:
-#   Creates an external repository on github and push local repository.
-#
-# REVIEWS:
-#
-# USAGE:
-#   github [actions]
-#           repo    создание удаленного репозитория и настройка локального
-#           push    выгрузка из локального в удаленный репозиторий
-#
-# -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+set -Eeuo pipefail
 
-# -=-=-=-=-=-=-= VARIABLES =-=-=-=-=-=-=-
-ACTIONS="${1}"
-CurrentDir=${PWD##*/}
-TokenFile=PATH/TO/TOKEN/FILE
-UserFile=PATH/TO/USER/GIT/FILE
-DescFile=RepoDesc
-FontNormal="\033[0m"
-FontRed="\033[31m"
+usage() {
+    # DESC: вывод справки и выход
+    # ARGS: ScripName, HOME, USERNAME
+    # OUTS: none
 
-# -=-=-=-=-=-=-= MESSAGES =-=-=-=-=-=-=-=-
-msg_NoParams="No parameters specified!"
-msg_RepoName="New repo name (enter for ${PWD##*/}): "
-msg_GitUserName="Git Username (enter for github): "
-msg_RepoDescription="Repo Description: "
-msg_TokenGit="Personal access token: "
-msg_NoTokenGit="No token specified or no token file! Enter access token."
+    cat <<EOF
+Использование: $ScriptName [-v] [-h] command
 
-# -=-=-=-=-=-=-= FUNCTIONS =-=-=-=-=-=-=-
-# создать удаленный и локальный репозитории
-repo() {
-    # упаковываем параметры git.api
-    GitRepoParams="{\"name\":\"${GitRepoName}\", \"description\":\"${RepoDescription}\", \"private\":false, \"has_issues\":true, \"has_downloads\":true, \"has_wiki\":false}"
+Удаленая работа с GitHub из командной строки, в интерактивном режиме.
 
-    # создаем внешний репозиторий
-    curl -u "${GitUserName}":"${TokenGit}" https://api.github.com/user/repos -d "${GitRepoParams}"
+Доступные опции:
 
-    # проеверяем доступность локального репозитория
-    # если не существует то создаем
-    [ -d .git ] || git init
+-v, --verbose   Выводить информацию об отладке сценария
+-h, --help      Показать эту справку и выйти
+--no-color      Выводить сообщения без цвета, по умолчанию включен режим цвет
 
-    # добавляем ссылку на внешний репозиторий
-    git remote add origin https://github.com/"${GitUserName}"/"${GitRepoName}".git
+Доступные команды:
+
+repo    создание удаленного репозитория и настройка локального
+push    выгрузка из локального в удаленный репозиторий
+
+Файлы конфигурации:
+
+user.git    содержит имя пользователя github.com
+token.git   содержит token доступа к github.com
+
+Описание:
+
+Позволяет сократить до минимума число команд, набираемых в командной строке.
+Необходимые данные получает из запросов или из файлов конфигурации, которые
+должны быть предварительно созданы и размещены в домашней директории
+пользователя, например $HOME/.git/.
+
+Если поле ответа на запрос остается пустым, и соответствующий файл отсутствует,
+будут использованы значения по умолчанию, кроме
+
+"Персональный ключ доступа"  должно быть введено на запрос, или присутствовать
+                             соответствующий файл.
+
+В качестве значений по умолчанию используются:
+
+"Имя пользователя Git"       будет подставлено имя текущего пользователя,
+                             т.е. имя $USERNAME.
+
+"Имя удаленного репозитория" будет соответствовать имени текущей директории, в
+                             которой создан локальный репозиторий.
+
+"Описание репозитория"       хранится в файле RepoDesc, если файл отсутствует
+                             будет передано пустое описание.
+
+Команды не описаные в этой справке, скриптом не поддерживаются, и выполняются
+из командной строки.
+EOF
+    exit
 }
 
-# выгрузить изменения из локального в удаленный репозиторий
-push() {
-    git push https://"${GitUserName}":"${TokenGit}"@github.com/"${GitUserName}"/"${GitRepoName}".git master
+colorset() {
+    # DESC: установка цветов для вывода текста
+    # ARGS: NO_COLOR, TERM
+    # OUTS: NORMAL, RED, GREEN, YELLOW, BLUE, PURPLE, CYAN
+
+    if [[ -t 2 ]] && [[ -z "${NO_COLOR:-}" ]] && [[ "${TERM:-}" != "dumb" ]]; then
+        NORMAL='\033[0m' RED='\033[0;31m' GREEN='\033[0;32m' YELLOW='\033[0;33m'
+        BLUE='\033[0;34m' PURPLE='\033[0;35m' CYAN='\033[0;36m'
+    else
+        NORMAL='' RED='' GREEN='' YELLOW='' BLUE='' PURPLE='' CYAN=''
+    fi
 }
 
-# -=-=-=-=-=-=-=-= MAIN  =-=-=-=-=-=-=-=-
-# проверка наличия параметров запуска, если нет выходим с ошибкой 1
-if [ -z "${*}" ]; then
-    echo "${msg_NoParams}"
-    exit 1
-fi
+msg() {
+    # DESC: вывод сообщений скрипта
+    # ARGS: $1 - сообщение
+    # OUTS: none
 
-# получаем данные для работы с github
-# имя репозитория, по умолчанию имя директории проекта
-read -r -p "${msg_RepoName}" GitRepoName
-GitRepoName=${GitRepoName:-${CurrentDir}}
+    echo >&2 -e "${1:-}"
+}
 
-# имя пользователя
-read -r -p "${msg_GitUserName}" GitUserName
-if [ -z "${GitUserName}" ]; then
+die() {
+    # DESC: вывод служебных сообщений скрипта и выход с кодом завершения
+    # ARGS: $1 - сообщение,
+    #       $2 - код выхода, по умолчанию 1
+    # OUTS: none
 
-    if [ -f "${UserFile}" ]; then
-        GitUserName=$(cat "${UserFile}")
-    else
-        GitUserName=${GitUserName:-${USER}}
-    fi
+    local msg=$1
+    local code=${2:-1}
+    msg "$msg"
+    exit "$code"
+}
 
-fi
+argparse() {
+    # DESC: парсер командной строки
+    # ARGS: $@
+    # OUTS: args[@]
 
-# описание репозитория, если есть файл описания прочитает из файла
-# или передаст пустое
-read -r -p "${msg_RepoDescription}" RepoDescription
-if [ -z "${RepoDescription}" ]; then
+    while :; do
+        case "${1:-}" in
+        -h | --help) usage ;;
+        -v | --verbose) set -x ;;
+        --no-color) NO_COLOR=1 ;;
+        -?*) die "$ScriptName: неверный ключ - «$1»\nПо команде «$ScriptName --help» можно получить дополнительную информацию." ;;
+        *) break ;;
+        esac
+        shift
+    done
 
-    if [ -f RepoDesc ]; then
-        RepoDescription=${RepoDescription:-$(cat "${DescFile}")}
-    else
-        RepoDescription=""
-    fi
+    args=("$@")
 
-fi
+    # проверка доступных команд
+    [[ ${#args[@]} -eq 0 ]] && die "$ScriptName: пропущен операнд.\nПо команде «$ScriptName --help» можно получить дополнительную информацию."
+    [[ ${#args[@]} -gt 1 ]] && die "$ScriptName: задано много команд.\nПо команде «$ScriptName --help» можно получить дополнительную информацию."
 
-# ключ доступа, если не указан попытается прочитать из файла
-while [ -z "${TokenGit}" ]; do
-    read -r -p "${msg_TokenGit}" TokenGit
+    while :; do
+        case "${args[@]}" in
+        repo)
+            ACTIONS=${args[0]}
+            break
+            ;;
+        push)
+            ACTIONS=${args[0]}
+            break
+            ;;
+        *) die "$ScriptName: неподдерживаемая команда ${args[0]}\nПо команде «$ScriptName --help» можно получить дополнительную информацию." ;;
+        esac
+    done
 
-    if [ -z "${TokenGit}" ]; then
+    return 0
+}
 
-        if [ -f "${TokenFile}" ]; then
-            TokenGit=${TokenGit:-$(cat "${TokenFile}")}
+initparam() {
+    # DESC: инициализация переменных для управления репозиторием
+    # ARGS: none
+    # OUTS: GitRepoName, GitUserName, TokenGit
+
+    # получить имя репозитория
+    read -r -p "Введите имя удаленого репозитория (по умолчанию ${CurrentDir##*/}): " GitRepoName
+    GitRepoName=${GitRepoName:-${CurrentDir##*/}}
+
+    # получить имя пользователя
+    read -r -p "Введите имя пользователя github (по умолчанию $USERNAME): " GitUserName
+
+    if [ -z "$GitUserName" ]; then
+
+        if [ -f "$UserFile" ]; then
+            GitUserName=$(cat "$UserFile")
         else
-            echo -e "${FontRed}${msg_NoTokenGit}${FontNormal}"
+            GitUserName=${GitUserName:-$USERNAME}
         fi
 
     fi
-done
 
-# запускаем выполнение команд
-"${ACTIONS}"
+    # получить персональный ключ доступа к github
+    while [ -z "${TokenGit[*]}" ]; do
+        read -r -p "Введите персональный ключ доступа на github: " TokenGit
+
+        if [ -z "$TokenGit" ]; then
+
+            if [ -f "$TokenFile" ]; then
+                TokenGit=${TokenGit:-$(cat "${TokenFile}")}
+            else
+                msg "$REDНе указан персональный ключ доступа или отсутствует файл содержащий его!$NORMAL"
+            fi
+
+        fi
+    done
+
+}
+
+repo() {
+    # DESC: создать удаленный и локальный репозитории
+    # ARGS: GitRepoName, GitUserName, TokenGit
+    # OUTS: none
+
+    # получить описание репозитория
+    read -r -p "Введите описание репозитория: " RepoDescription
+
+    if [ -z "${RepoDescription[*]}" ]; then
+
+        if [ -f RepoDesc ]; then
+            RepoDescription=$RepoDescription:-$(cat "$DescFile")
+        else
+            RepoDescription=""
+        fi
+
+    fi
+
+    # упаковываем параметры git.api
+    GitRepoParams="{\"name\":\"$GitRepoName\", \"description\":\"$RepoDescription\", \"private\":false, \"has_issues\":true, \"has_downloads\":true, \"has_wiki\":false}"
+
+    # создаем внешний репозиторий
+    curl -u "$GitUserName":"$TokenGit" https://api.github.com/user/repos -d "$GitRepoParams"
+
+    # проеверяем доступность локального репозитория, если не существует то создаем
+    [ -d .git ] || git init
+
+    # добавляем ссылку на внешний репозиторий
+    git remote add origin https://github.com/"$GitUserName"/"$GitRepoName".git
+}
+
+push() {
+    # DESC: выгрузить изменения из локального в удаленный репозиторий
+    # ARGS: GitRepoName, GitUserName, TokenGit
+    # OUTS: none
+
+    git push https://"$GitUserName":"$TokenGit"@github.com/"$GitUserName/$GitRepoName".git master
+}
+
+ScriptName=$(basename "${BASH_SOURCE[0]}")
+CurrentDir="$PWD"
+TokenFile="$HOME/.git/token.git"
+UserFile="$HOME.git/user.git"
+DescFile="RepoDesc"
+
+# разбираем параметры командной строки
+argparse "$@"
+
+# инициализируем настройки цвета
+colorset
+
+# получаем общие данные для работы с github
+initparam
+
+# запускаем выполнение команды
+$ACTIONS
+exit

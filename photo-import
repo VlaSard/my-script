@@ -30,7 +30,7 @@
 SourcekDir=${1:-${PWD}}
 
 # каталог назначения
-DestDir="/tmp/Photo_album"
+DestDir="$HOME/Photo_album"
 
 # настройка импорта фотографий:
 # import - импорт без измения фотографий;
