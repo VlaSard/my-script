@@ -210,7 +210,7 @@ push() {
 ScriptName=$(basename "${BASH_SOURCE[0]}")
 CurrentDir="$PWD"
 TokenFile="$HOME/.git/token.git"
-UserFile="$HOME.git/user.git"
+UserFile="$HOME/.git/user.git"
 DescFile="RepoDesc"
 
 # разбираем параметры командной строки
