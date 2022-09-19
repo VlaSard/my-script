@@ -1,0 +1,210 @@
+#! /bin/sh
+# установщик пользовательских сценариев и страниц руководств к ним
+# ищет сценарии в исходном каталоге и всех вложенных каталогах
+# файлы справочных страниц копирует в каталоги по разделам
+
+trap cleaning EXIT
+
+# вывод справки
+usage() {
+    usages="\
+Использование: $script_name [ПАРАМЕТР]… [ФАЙЛ]…
+Копирует пользовательские сценарии и их страницы руководств.
+
+Аргументы, обязательные для длинных параметров, обязательны и для коротких.
+    -C, --compare         копировать только если исходный файл новее
+    -d SRCDIR             задает каталог источник
+    -b                    создавать резервные копии
+    -S, --suffix SUFFIX   установить СУФФИКС для резервных копий
+
+        --help        показать эту справку и выйти
+        --version     показать версию и выйти
+
+Документация доступна локально по команде: man $script_name"
+
+    die "$usages" 0
+}
+
+# вывод служебных сообщений и выход
+die() {
+    msg "$1"
+    [ -z "$2" ] && # если код выхода не передан вывести вторую строку
+        msg "По команде «$script_name --help» можно получить дополнительную информацию."
+    exit "${2:-1}" # по умолчанию код выхода 1
+}
+
+# вывод сообщений
+msg() {
+    echo "${1:-}" >&2 # если сообщения нет вывод пустой строки
+}
+
+# парсер командной строки
+argparse() {
+    [ $# -eq 0 ] && die "$script_name: пропущен операнд"
+    while [ $# -gt 0 ]; do
+        case $1 in
+        -b) fl_backup=true ;;
+        -C | --compare) fl_compare=true ;;
+        -S | --suffix)
+            [ ! "$2" ] && die "$script_name: неверно указаны параметры"
+            case $2 in
+            -?*) die "$script_name: неверно указаны параметры" ;;
+            *) ch_suffix=$2 ;;
+            esac
+            shift
+            ;;
+        -d)
+            [ ! "$2" ] && die "$script_name: неверно указаны параметры"
+            case $2 in
+            -?) die "$script_name: неверно указаны параметры." ;;
+            *) src_dir=$2 ;;
+            esac
+            shift
+            ;;
+        --help) usage ;;
+        --version) die "$script_name: $script_vession" 0 ;;
+        -*) die "$script_name: неверный ключ «$1»" ;;
+        *)
+            args="$*"
+            break
+            ;;
+        esac
+        shift
+    done
+    # проверка наличия позиционных аргументов
+    [ -z "$args" ] && die "$script_name: пропущены аргументы"
+}
+
+# инициализация переменных
+init() {
+    # переменные сценария
+    script_name=${0##*/}
+    script_vession=20220912.04
+    current_dir=$PWD
+    # значения по умолчанию
+    fl_compare=false
+    fl_backup=false
+    ch_suffix="~"
+    src_dir=
+    # пути для копирования файлов
+    user_id=$(id -u) # если запущен без root
+    if [ "$user_id" != "0" ]; then
+        dst_dir_bin=$HOME/.local/bin
+        dst_dir_man=$HOME/.local/share/man
+    else # если запущен с root правами
+        dst_dir_bin=/usr/bin
+        dst_dir_man=/usr/share/man
+    fi
+}
+
+# создать временный каталог
+tmp_dir() {
+    # В качестве случайного имени, для временного каталога используем
+    # время в формате наносекуд. В первой части берем 5 символлов, во
+    # второй 9 символов. (In POSIX sh, RANDOM is undefined.)
+    tmpdir=${TMPDIR:-/tmp}/$(date +%N | grep -o '^[0-9]\{5\}')_$(date +%N)
+    if test -n "$tmpdir" && test ! -d "$tmpdir"; then
+        eval mk_dir "755" "$tmpdir"
+    else
+        die "$script_name: не могу создать временный каталог" 1
+    fi
+}
+
+# создать каталог: $1 - режим доступа, $2 - путь к каталогу
+mk_dir() {
+    if test ! -d "$2"; then
+        eval mkdir -m "$1" -p -- "$2"
+
+
+        # test -d "$dirmk"
+        # dirmk_status=$?
+
+        # TODO: создание каталога в случае неудачи mkdir, пока полагаемся на mkdir
+        #       проверку успеха создания каталога можно проверить по коду возврата eval
+
+    fi
+}
+
+# очистка перед завершением сценария
+cleaning() {
+    eval rm -rf "$tmpdir" # удаление временных файлов
+}
+
+# копирование файлов: $1 - dst_dir, $2 - dst_file
+installing() {
+    mk_dir "755" "$1" # создаем каталоги назначения
+    if test ! -f "$1/$2" && cp -p "$tmpdir/$2" "$1/$2"; then # src файл не существует
+        msg "Файл «$2» успешно скопирован в «$1/$2»."
+    else # src файл существует
+        if $fl_compare && cmp -s "$tmpdir/$2" "$1/$2"; then # файлы dst и src одинаковые
+            msg "Файл «$2» в обновлении не нуждается."
+        else # файлы отличаются
+            if $fl_backup; then # флаг fl_backup=true
+                if cp -up "$1/$2" "$1/$2$ch_suffix" && cp -up "$tmpdir/$2" "$1/$2"; then
+                    msg "Резервная копия файла «$2» успешно создана в «$1/$2$ch_suffix»."
+                    msg "Файл «$2» успешно скопирован в «$1/$2»."
+                fi
+            else # флаг fl_backup=false
+                if cp -up "$tmpdir/$2" "$1/$2"; then
+                    msg "Файл «$2» успешно скопирован в «$1/$2»."
+                fi
+            fi
+        fi
+    fi
+}
+
+init
+argparse "$@"
+tmp_dir
+work_dir=${src_dir:-$current_dir} # если src_dir не получен из командной строки
+# перебираем список сценариев
+for filename in $args; do
+    if test -d "$filename"; then
+        continue # если директория - пропускаем
+    fi
+    file_name=${filename%.[^.]*} # полное имя файла без расширения
+    # ищем файлы с именами из списка в рабочем каталоге
+    # скрытые каталоги исключаем из поиска
+    find "$work_dir" -iname "$file_name*" ! -path "*/.*" | sort |
+        while read -r src_file; do
+            mime_type=$(file --mime-type --brief -- "$src_file") # тип файла по mime-type
+            # обработка файлов справочных страниц
+            if
+                [ "$mime_type" = 'text/troff' ] ||
+                [ "$mime_type" = 'application/gzip' ] # man страницы могут быть в gz
+            then
+                # номер раздела для man pages, из имени файла
+                man_n=$(echo "$src_file" | grep -o '\.\<[1-9nol]p*\>' | sed 's/[.]/man/')
+                # язык man page из пути к man page
+                man_lang=$(echo "$src_file" | grep -o '\/ru\/')
+                cp -p "$src_file" "$tmpdir" # подготовка временного файла
+                src_file="$tmpdir/${src_file##*/}" # имя файла назначения
+                if [ "$mime_type" = 'text/troff' ]; then # если man page не в gz
+                    gzip "$src_file"
+                    dst_file=${src_file##*/}.gz # имя файла назначения
+                else
+                    dst_file="${src_file##*/}"
+                fi
+                # если временный файл обработан, запуск установки
+                if test -f "$tmpdir/$dst_file"; then
+                    eval chmod 644 "$tmpdir/$dst_file"
+                    installing "$dst_dir_man${man_lang:=/}$man_n" "$dst_file"
+                fi
+            fi
+            # обработка файлов сценариев
+            # добавить необходимые mime-type
+            if
+                [ "$mime_type" = 'text/x-shellscript' ] ||
+                [ "$mime_type" = 'text/x-script.python' ] ||
+                [ "$mime_type" = 'text/x-perl' ]
+            then
+                dst_file="${src_file##*/}" # имя файла назначения
+                cp -p "$src_file" "$tmpdir" # подготовка временного файла
+                # если успех, запуск установки
+                if test -f "$tmpdir/$dst_file"; then
+                    eval chmod 755 "$tmpdir/$dst_file"
+                    installing "$dst_dir_bin" "$dst_file"
+                fi
+            fi
+        done
+done
