@@ -1,0 +1,126 @@
+#!/bin/sh
+# Шаблон sh сценария
+#
+# Заполнить:
+#   usage     справка по сценарию
+#   main      основное тело сценария
+#   init      процедура инициализации
+#   argparse  парсер CLI
+#   cleaning  очистка по TRAP
+
+usage() { # Вывод справки по использованию сценарию
+    cat <<EOF
+Usage: $ScriptName [PARAMETER]… [ARGUMENT]…
+
+Script description here.
+
+PARAMETER:
+    -f, --flag                 Some flag description
+    -p, --param [PARAMETER]    Some param description
+    -v, --verbose              Print script debug info
+
+        --help       Print this help and exit
+        --version    Print script version info
+EOF
+    exit
+}
+
+main() { # Основное тело сценария
+    init "$@"
+
+    # основное тело сценария
+
+}
+
+init() { # Подготовка и инициализания
+    trap cleaning INT TERM EXIT
+
+    # read-only variables
+    ScriptDir=$(cd "$(dirname "$0")" 2>&1 && pwd -P) # директория расположения сценария
+    ScriptName=$(basename "$0")                      # имя сценария
+    ScriptVersion='1.0.1'                            # версия сценария
+    CurrentDir=$(pwd -P)                             # текущая директория
+    readonly ScriptDir ScriptName ScriptVersion CurrentDir
+
+    # default values of variables
+    Flag=0
+    Param=''
+
+    argparse "$@" # Разбор CLI
+    colorset      # Инициализация переменных цвета
+
+    # other variables
+
+    # описать переменные
+
+}
+
+argparse() { # Разбор опций CLI
+    [ $# -eq 0 ] && die "$ScriptName: пропущен операнд"
+
+    while [ $# -gt 0 ]; do
+        case $1 in
+
+        -f | --flag) Flag=1 ;; # flag example
+
+        -p | --param) # example of a key with parameters
+            [ ! "$2" ] && die "$ScriptName: не указаны параметры ключа «$1»"
+            case $2 in
+            -?*) die "$ScriptName: неверно указаны параметры ключа «$1»" ;;
+            *) Param=$2 ;;
+            esac
+            shift
+            ;;
+
+        --no-color) NO_COLOR=1 ;;
+
+        -v | --verbose) set -x ;; # example of a key without a parameter
+
+        --help) usage ;;
+
+        --version) die "$ScriptName: версия сценария $ScriptVersion" 0 ;;
+
+        -*) die "$ScriptName: неверный ключ «$1»" ;;
+
+        *)
+            Args="$*"
+            break
+            ;;
+        esac
+        shift
+    done
+
+    # проверка наличия позиционных аргументов
+    [ -z "$Args" ] && die "$ScriptName: пропущены аргументы"
+}
+
+cleaning() { # Очистка при завершении работы сценария по ловушкам
+
+    # процедуры выхода из сценария
+
+}
+
+colorset() { # Настройки цветов
+    # shellcheck disable=2034
+    if
+        test -t 2 &&
+        test -z "${NO_COLOR:-}" &&
+        test "${TERM:-}" != "dumb"
+    then
+        NORMAL='\033[0m' RED='\033[0;31m' GREEN='\033[0;32m' ORANGE='\033[0;33m'
+        BLUE='\033[0;34m' PURPLE='\033[0;35m' CYAN='\033[0;36m'
+    else
+        NORMAL='' RED='' GREEN='' ORANGE='' BLUE='' PURPLE='' CYAN=''
+    fi
+}
+
+die() { # Вывод служебных сообщений сценария и выход с кодом завершения
+    msg "$1"
+    exit "${2:-1}" # default exit status 1
+}
+
+msg() { # Вывод сообщений сценария. Поддерживает вывод в цвете.
+    printf "%b\n" "${1:-}"
+}
+
+main "$@"
