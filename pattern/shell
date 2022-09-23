@@ -28,7 +28,12 @@ EOF
 main() { # Основное тело сценария
     init "$@"
 
-    # основное тело сценария
+    msg "$CYANВыполнение основных команд$NORMAL"
+    msg "$ScriptDir"
+    msg "$ScriptName"
+    msg "$CurrentDir"
+    msg "$Flag"
+    msg "$Param"
 
 }
 
@@ -56,15 +61,15 @@ init() { # Подготовка и инициализания
 }
 
 argparse() { # Разбор опций CLI
-    [ $# -eq 0 ] && die "$ScriptName: пропущен операнд"
+    test $# -eq 0 && die "$ScriptName: пропущен операнд"
 
-    while [ $# -gt 0 ]; do
+    while test $# -gt 0; do
         case $1 in
 
         -f | --flag) Flag=1 ;; # flag example
 
         -p | --param) # example of a key with parameters
-            [ ! "$2" ] && die "$ScriptName: не указаны параметры ключа «$1»"
+            test ! "$2" && die "$ScriptName: не указаны параметры ключа «$1»"
             case $2 in
             -?*) die "$ScriptName: неверно указаны параметры ключа «$1»" ;;
             *) Param=$2 ;;
@@ -91,12 +96,12 @@ argparse() { # Разбор опций CLI
     done
 
     # проверка наличия позиционных аргументов
-    [ -z "$Args" ] && die "$ScriptName: пропущены аргументы"
+    test -z "$Args" && die "$ScriptName: пропущены аргументы"
 }
 
 cleaning() { # Очистка при завершении работы сценария по ловушкам
 
-    # процедуры выхода из сценария
+    msg "$REDОчистка перед выходом$NORMAL"
 
 }
 
