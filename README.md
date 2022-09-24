@@ -2,85 +2,83 @@
 
 ---
 
-Мои скрипты различного назначения.
+My scripts for various purposes..
 
-### работа с github
+### work with github
 
  -  **git-repo**
-    -  Создает репозиторий на удаленном сервере (https://github.com) и локальный репозиторий, если до этого его не было. И настраивает локальный репозиторий.
+    -  Creates a repository on a remote server (https://github.com) and a local repository if there was none before. And configures the local repository.
  -  **github**
-    -  Тоже что и git-repo, с дополнительным функционалом.
-    - Поддерживает команды:
-      -  'repo' - создает репозиторий на https://github.com и локальный репозиторий, если его нет. Настраивает локальный репозиторий.
-      -  'push' - выгружет комиты на удаленный репозиторий.
-   	- Запрашивает у пользователя:
-      -  имя репозитория (по умолчанию используется имя локального репозитория);
-      -  имя пользователя на github, по умолчанию имя учетной записи (может не совпадать с именем пользователя github) или читает из файла настроек пользователя (создается вручную);
-      -  токен доступа на github. Вводится руками или читается из файла, предварительно созданного;
-      -  описание репозитория, может быть пустым (не путать с описание комита).
-    -  Настроить скрипт можно изнутри, правкой некоторых параметров.
+    -  Also like git-repo, with additional functionality.
+    - Supports commands:
+      -  'repo' - creates a repository on the https://github.com and a local repository if none exists. Configures the local repository.
+      -  'push' - uploads the committees to a remote repository.
+   	- Prompts user:
+      -  repository name (default is local repository name);
+      -  user name on github, default account name (may not be the same as github user name) or reads from user settings file (created manually);
+      -  access token on github. Enter by hand or read from a file previously created;
+      -  repository description, may be empty (not to be confused with committee description).
+    -  You can configure the script from the inside, editing some parameters.
 
-### работа с изображениями
+### working with images
 
  -  **photo-import**
-    -  Импортирует фотографии в фотоальбом на компьютер. В качестве параметра запуска скрипта можно передать имя директории от куда будут импортироваться фотографии. Импорт происходит из указанной директории и всех вложенных поддиректорий. При импорте можно:
-       -  изменить качество фотографий и их размер,
-       -  можно импортировать без изменений,
-       -  установить дату создания файла в соответствии с данными EXIF
-	- Все настройки работы скрипта производятся внутри самого скрипта.
+    -  Imports photos to a photo gallery on your computer. As a script startup parameter, you can pass the directory name from where the photos will be imported. The import comes from the specified directory and all nested subdirectories. When importing, you can:
+       - change the quality of photos and their size,
+       - can be imported unchanged,
+       - set file creation date according to EXIF data
+       - All settings for the script are made inside the script itself.
  -  **image_menu**
-    -  Конвертирует изображения из одного формата в другой, с настройкой параметров преобразования, через графический интерфейс.
-    -  Поддерживает конвертирование в форматы:
+    -  Converts images from one format to another, with conversion settings, through a graphical interface.
+    -  Supports conversion to formats:
        -  jpg;
        -  png;
-       -  и упаковку в многостаничный pdf-файл.
-    -  Скрипт был написан для использования в контекстных меню файловых менеджеров.
+       -  and packing in a multi-end pdf file.
+    -  The script was written for use in the context menus of file managers.
  -  **photo_menu**
-    -  Позволяет:
-       -  сжимать фотографии;
-       -  изменять размер фотографий;
-       -  производить переименование файлов к виду YYYYMMDD_HHMMSS.
-    -  Использует графический интерфейс.
-    -  Основное применение скрипта в контекстных меню файловых менеджеров.
+    -  allows:
+       - compress photos;
+       - change the size of photos;
+       - renames the files to the YYYYMMDD_HHMMSS view.    -  Использует графический интерфейс.
+    -  The main application of the script in the context menus of file managers.
 
-### работа с pdf-файлами
+### work with pdf files
 
  -  **pdf_service_menu**
-    -  Работа с pdf-файлами, через контекстное меню файловых менеджеров.
-    -  Использует графический интерфейс.
-    -  Много функций.
+    -  Working with pdf files, through the context menu of file managers.
+    -  Uses GUI.
+    -  Many features.
  -  **pdfmark**
-    -  Объединяет pdf-файлы в один документ и добавляет закладки в итоговый файл. В качестве имени закладки используются имена объединяемых файлов.
+    -  Combines pdf files into a single document and adds bookmarks to the resulting file. The bookmark name is the name of the files to merge.
 	
-### программирование
+### programming
 
  -  **create-bash**
-    -  Создает пустой bash-скрип и устанавливает флаг исполняемый.
+    -  Creates an empty bash creep and sets the executable flag.
  -  **create-py-project**
-    -  Создает структуру проекта общего назначения.
-    -  Настраивает директории, создает и заполняет некоторые файлы проекта.
-    -  Устанавливает и активирует виртуальное пространство в директории проекта.
-    -  Активирует VCS и делает первичный commit.
-
-### служебные
+    - Creates a general purpose project structure.
+    - Configures directories, creates and populates some project files.
+    - Installs and activates virtual space in the project directory.
+    - Activates the VCS and makes a primary commit.
+### utils
 
  -  **script-install**
-    -  Устанавливает пользовательские скрипты.
+    -  Installs custom scripts.
  -  **cache-cleaning**
-    -  Очистка кеша обновлений
+    -  Cache cleaning updated
  -  **shinst**
-    -  Копирование пользовательских скриптов и их man pages
+    -  Copying user scripts and their man pages
 
-### вспомогательные
+### auxiliary
 
  -  **colors.sh**
-    -  Настройки атрибутов текста для shell-скриптов.
+    -  Set up text attributes for shell scripts.
  -  **gz**
-    -  Распаковка (упаковка) gz архивов.
+    -  Unpacking (packing) gz archives.
  -  **whtm**
-    -  Скачивание сайтов. Скрипт-оболочка для wget.
+    -  Download sites. Script-shell for wget.
 
-### прочее
+### other
 
  -  **random**
-    -  Генератор случайных фраз из алфавитно-цифровых символов.
+    -  Alphanumeric random phrase generator.
