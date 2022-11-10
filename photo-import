@@ -27,7 +27,7 @@
 
 # -=-=-=-=-=-=-= VARIABLES =-=-=-=-=-=-=-
 # если каталог с фотографиями не указан, используем текущий каталог
-SourcekDir=${1:-${PWD}}
+SourceDir=${1:-${PWD}}
 
 # каталог назначения
 DestDir="$HOME/Photo_album"
@@ -156,7 +156,7 @@ convert() {
 # -=-=-=-=-=-=-=-= MAIN  =-=-=-=-=-=-=-=-
 
 # перебираем все jpg-файлы в указанной директории и всех поддиректориях
-find "${SourcekDir}" -iname "*.jpg" | sort |
+find "${SourceDir}" -iname "*.jpg" | sort |
     while read -r FilePhoto; do
 
         for PhotoDate in "Exif.Photo.DateTimeOriginal" "Exif.Image.DateTime"; do
