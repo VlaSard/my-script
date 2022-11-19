@@ -41,6 +41,8 @@ My scripts for various purposes..
        - change the size of photos;
        - renames the files to the YYYYMMDD_HHMMSS view.    -  Использует графический интерфейс.
     -  The main application of the script in the context menus of file managers.
+ - **photo-date**
+    - Stamps the date of the photo on the image.
 
 ### work with pdf files
 
