@@ -1,0 +1,31 @@
+#!/bin/sh
+
+photos=$*
+font="Veles-Bold"
+fontcolor="#fabb5c"
+
+for filename in $photos; do
+    if test -d "$filename"; then
+        zenity --warning --text="Photo date maker\nYou can't put a date on a catalogue"
+        exit 1
+    fi
+
+    for photodate in "Exif.Photo.DateTimeOriginal" "Exif.Image.DateTime"; do
+
+        photodate=$(exiv2 -g "${photodate}" -Pv "${filename}")
+
+        test -n "${photodate}" && break
+    done
+
+    photodate="$(echo "$photodate" | sed -e 's/ .*//g' -e 's/\(.*\):\(.*\):\(.*\)/\3.\2.\1/g')"
+
+    mogrify -quality 100 \
+        -draw "text 100,80 '$photodate'" \
+        -pointsize 110 \
+        -gravity SouthEast \
+        -font $font \
+        -fill $fontcolor \
+        "$filename"
+
+done
+
